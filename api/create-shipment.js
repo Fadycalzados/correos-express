@@ -16,12 +16,7 @@ async function createShipment({ name, address, city, zip, phone, price, ref }) {
   const pass   = process.env.CORREOS_PASS;
   const client = process.env.CORREOS_CLIENT || 'B13500001';
 
-  const senderName    = process.env.SENDER_NAME    || 'STYLO TACONES';
-  const senderAddress = process.env.SENDER_ADDRESS || '';
-  const senderCity    = process.env.SENDER_CITY    || '';
-  const senderZip     = process.env.SENDER_ZIP     || '';
-  const senderPhone   = process.env.SENDER_PHONE   || '';
-  const product       = process.env.CORREOS_PRODUCT || '54'; // Paq 24 = 54
+  const product = process.env.CORREOS_PRODUCT || '54'; // Paq 24 = 54
 
   const reembolso = price ? parseFloat(price).toFixed(2) : '0.00';
 
@@ -33,15 +28,15 @@ async function createShipment({ name, address, city, zip, phone, price, ref }) {
     refCliente:       '',
     fecha:            today(),
     codRte:           pad(client, 10),
-    nomRte:           pad(senderName, 30),
+    nomRte:           '',
     nifRte:           '',
-    dirRte:           pad(senderAddress, 50),
-    pobRte:           pad(senderCity, 50),
-    codPosNacRte:     pad(senderZip, 5),
+    dirRte:           '',
+    pobRte:           '',
+    codPosNacRte:     '',
     paisISORte:       'ES',
     codPosIntRte:     '',
-    contacRte:        pad(senderName, 50),
-    telefRte:         pad(senderPhone, 15),
+    contacRte:        '',
+    telefRte:         '',
     emailRte:         '',
     codDest:          '',
     nomDest:          pad(name, 40),
