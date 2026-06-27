@@ -5,16 +5,79 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Fady Envíos</title>
   <style>
-    body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f5f5f5; }
-    .card { background: #fff; border-radius: 16px; padding: 32px; text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
-    h1 { font-size: 22px; margin-bottom: 8px; }
-    p { color: #888; font-size: 14px; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; padding: 20px; }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #888; margin-bottom: 20px; }
+    .stats { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .stat { background: #fff; border-radius: 12px; padding: 16px 20px; flex: 1; min-width: 120px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+    .stat .num { font-size: 28px; font-weight: 700; }
+    .stat .label { font-size: 12px; color: #888; margin-top: 2px; }
+    .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.07); display: flex; align-items: center; gap: 12px; }
+    .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
+    .badge.created   { background: #e3f2fd; color: #1565c0; }
+    .badge.camino    { background: #fff8e1; color: #e65100; }
+    .badge.ausente   { background: #ffebee; color: #c62828; }
+    .badge.rechazado { background: #fce4ec; color: #880e4f; }
+    .badge.entregado { background: #e8f5e9; color: #2e7d32; }
+    .info { flex: 1; }
+    .info .name { font-weight: 600; font-size: 15px; }
+    .info .detail { font-size: 12px; color: #888; margin-top: 2px; }
+    .track-link { font-size: 12px; color: #1565c0; text-decoration: none; }
+    .track-link:hover { text-decoration: underline; }
+    .refresh { background: #000; color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 20px; }
+    .empty { text-align: center; color: #aaa; padding: 40px; }
+    .section-title { font-size: 13px; font-weight: 700; color: #444; text-transform: uppercase; letter-spacing: .5px; margin: 16px 0 8px; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Fady Envíos 📦</h1>
-    <p>Sistema de gestión de envíos Correos Express</p>
+  <h1>Fady Envíos 📦</h1>
+  <p class="sub">Envíos Correos Express</p>
+  <button class="refresh" onclick="load()">Actualizar</button>
+  <div class="stats">
+    <div class="stat"><div class="num" id="s-total">—</div><div class="label">Total</div></div>
+    <div class="stat"><div class="num" id="s-camino">—</div><div class="label">En camino</div></div>
+    <div class="stat"><div class="num" id="s-ausente" style="color:#c62828">—</div><div class="label">Ausentes</div></div>
+    <div class="stat"><div class="num" id="s-rechazado" style="color:#880e4f">—</div><div class="label">Rechazados</div></div>
+    <div class="stat"><div class="num" id="s-entregado" style="color:#2e7d32">—</div><div class="label">Entregados</div></div>
   </div>
+  <div id="list"></div>
+
+  <script>
+    const STATUS_LABEL = { created: 'Creado', camino: 'En camino', ausente: 'Ausente', rechazado: 'Rechazado', entregado: 'Entregado' };
+    const ORDER = ['ausente','rechazado','camino','created','entregado'];
+
+    async function load() {
+      const r = await fetch('/api/shipments');
+      const d = await r.json();
+      const ships = d.shipments || [];
+
+      document.getElementById('s-total').textContent     = ships.length;
+      document.getElementById('s-camino').textContent    = ships.filter(s => s.status === 'camino').length;
+      document.getElementById('s-ausente').textContent   = ships.filter(s => s.status === 'ausente').length;
+      document.getElementById('s-rechazado').textContent = ships.filter(s => s.status === 'rechazado').length;
+      document.getElementById('s-entregado').textContent = ships.filter(s => s.status === 'entregado').length;
+
+      ships.sort((a, b) => (ORDER.indexOf(a.status) - ORDER.indexOf(b.status)) || (b.ts - a.ts));
+
+      const list = document.getElementById('list');
+      if (!ships.length) { list.innerHTML = '<div class="empty">No hay envíos registrados</div>'; return; }
+      list.innerHTML = ships.map(s => `
+        <div class="card">
+          <div class="info">
+            <div class="name">${s.name || s.phone}</div>
+            <div class="detail">${s.city || ''} ${s.zip || ''} · ${s.phone || ''} · €${s.price || 0}</div>
+            <div class="detail" style="margin-top:4px">
+              <a class="track-link" href="https://www.correosexpress.com/web/correosexpress/seguimiento?expedicion=${s.expedicion}" target="_blank">📦 ${s.expedicion}</a>
+              ${s.lastEvent ? ' · ' + s.lastEvent : ''}
+            </div>
+          </div>
+          <span class="badge ${s.status || 'created'}">${STATUS_LABEL[s.status] || s.status}</span>
+        </div>
+      `).join('');
+    }
+
+    load();
+  </script>
 </body>
 </html>
