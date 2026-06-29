@@ -1,5 +1,5 @@
 // Polls Correos Express for shipment status changes and sends WhatsApp notifications
-const CE_TRACK_URL = 'https://www.cexpr.es/wspsc/apiRestSeguimiento/json/seguimiento';
+const CE_TRACK_URL = 'https://www.cexpr.es/wspsc/apiRestSeguimientok8s/json/seguimiento';
 
 const WATI_BASE = `https://${process.env.WATI_DOMAIN || 'live-mt-server.wati.io/10164356'}/api/v1`;
 

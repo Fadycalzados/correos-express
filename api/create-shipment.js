@@ -1,5 +1,5 @@
 // Creates a Correos Express shipment and stores it in KV
-const CE_URL = 'https://www.correosexpress.com/wpsc/apiRestGrabacionEnvio/json/grabacionEnvio';
+const CE_URL = 'https://www.cexpr.es/wspsc/apiRestGrabacionEnviok8s/json/grabacionEnvio';
 
 function pad(v, n) { return String(v || '').slice(0, n); }
 
@@ -68,7 +68,7 @@ async function createShipment({ name, address, city, zip, phone, price, ref }) {
     listaBultos:      [],
     codDirecDestino:  '',
     password:         pass,
-    listaInformacionAdicional: [{ tipoEtiqueta: '1', etiquetaPDF: 'S' }],
+    listaInformacionAdicional: [{ tipoEtiqueta: '1', etiquetaPDF: 'N' }],
   };
 
   const auth = Buffer.from(`${user}:${pass}`).toString('base64');
