@@ -14,30 +14,31 @@ function today() {
 async function createShipment({ name, address, city, zip, phone, price, ref }) {
   const user   = process.env.CORREOS_USER;
   const pass   = process.env.CORREOS_PASS;
-  const client = process.env.CORREOS_CLIENT || 'B13500001';
+  const client = process.env.CORREOS_CLIENT || 'B11360001';
+  console.log('[correos] user:', user, 'client:', client, 'pass_len:', pass?.length);
 
-  const product = process.env.CORREOS_PRODUCT || '54'; // Paq 24 = 54
+  const product = process.env.CORREOS_PRODUCT || '54'; // Paq 24
 
   const reembolso = price ? parseFloat(price).toFixed(2) : '0.00';
 
   const body = {
-    solicitante:      pad(user, 100),
+    solicitante:      pad(client, 100),
     canalEntrada:     '5',
-    numEnvio:         '',
+    numEnvio:         String(Date.now()).padStart(16, '0'),
     ref:              pad(ref || `FAD${Date.now()}`, 20),
     refCliente:       '',
     fecha:            today(),
     codRte:           pad(client, 10),
-    nomRte:           '',
+    nomRte:           'FADY CALZADO',
     nifRte:           '',
-    dirRte:           '',
-    pobRte:           '',
-    codPosNacRte:     '',
+    dirRte:           'EXTREMADURA KALEA 4',
+    pobRte:           'GASTEIZ',
+    codPosNacRte:     '01003',
     paisISORte:       'ES',
     codPosIntRte:     '',
-    contacRte:        '',
-    telefRte:         '',
-    emailRte:         '',
+    contacRte:        'FADY CALZADO',
+    telefRte:         '681889165',
+    emailRte:         'asiffaisal976@gmail.com',
     codDest:          '',
     nomDest:          pad(name, 40),
     nifDest:          '',
@@ -64,18 +65,20 @@ async function createShipment({ name, address, city, zip, phone, price, ref }) {
     reembolso:        reembolso,
     entrSabado:       '',
     seguro:           '',
-    numEnvioVuelta:   '',
+    numEnvioVuelta:   String(Date.now() + 1).padStart(16, '0'),
     listaBultos:      [],
     codDirecDestino:  '',
     password:         pass,
     listaInformacionAdicional: [{ tipoEtiqueta: '1', etiquetaPDF: 'N' }],
   };
 
+  const jsonBody = JSON.stringify(body);
+  console.log('[correos] sending solicitante:', body.solicitante, 'body_len:', jsonBody.length);
   const auth = Buffer.from(`${user}:${pass}`).toString('base64');
   const r = await fetch(CE_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
-    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json; charset=utf-8', Authorization: `Basic ${auth}` },
+    body: jsonBody,
   });
 
   const text = await r.text();
@@ -86,8 +89,12 @@ async function createShipment({ name, address, city, zip, phone, price, ref }) {
   if (!match) throw new Error('Invalid response: ' + text.slice(0, 100));
   const data = JSON.parse(match[0]);
 
-  if (data.codigoRetorno !== 0) {
+  // 0 = success, 404 = shipment created but label not available
+  if (data.codigoRetorno !== 0 && data.codigoRetorno !== 404) {
     throw new Error(`Correos error ${data.codigoRetorno}: ${data.mensajeRetorno || JSON.stringify(data)}`);
+  }
+  if (!data.datosResultado) {
+    throw new Error(`Correos error ${data.codigoRetorno}: ${data.mensajeRetorno}`);
   }
 
   return { expedicion: data.datosResultado, label: data.etiqueta?.[0]?.etiqueta1 || null };
