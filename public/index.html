@@ -68,7 +68,7 @@
             <div class="name">${s.name || s.phone}</div>
             <div class="detail">${s.city || ''} ${s.zip || ''} · ${s.phone || ''} · €${s.price || 0}</div>
             <div class="detail" style="margin-top:4px">
-              <a class="track-link" href="https://www.correosexpress.com/web/correosexpress/seguimiento-envios?expedicion=${s.expedicion}" target="_blank">📦 ${s.expedicion}</a>
+              <span class="track-link" onclick="navigator.clipboard.writeText('${s.expedicion}');this.textContent='✅ Copiado!';setTimeout(()=>this.textContent='📦 ${s.expedicion}',1500)" style="cursor:pointer">📦 ${s.expedicion}</span>
               ${s.lastEvent ? ' · ' + s.lastEvent : ''}
             </div>
           </div>
