@@ -30,14 +30,18 @@
     .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
     .btn { border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
     .btn-dark { background: #000; color: #fff; }
-    .btn-sel  { background: #1565c0; color: #fff; }
-    .btn-del  { background: #e53935; color: #fff; display: none; }
-    .btn-print{ background: #2e7d32; color: #fff; display: none; }
-    .btn-clr  { background: #eee; color: #333; display: none; }
     .empty { text-align: center; color: #aaa; padding: 40px; }
-    .sel-circle { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #ccc; background: #fff; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: all .15s; }
+    .sel-circle { width: 22px; height: 22px; border-radius: 5px; border: 2px solid #ccc; background: #fff; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: all .15s; color: transparent; }
     .card.selected .sel-circle { background: #1565c0; border-color: #1565c0; color: #fff; }
     .cb { display: none; }
+    .act-bar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #fff; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.07); flex-wrap: wrap; }
+    .act-bar label { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; cursor: pointer; user-select: none; }
+    .act-bar input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; accent-color: #1565c0; flex-shrink: 0; }
+    .act-bar .sel-count { font-size: 13px; color: #888; }
+    .btn-print-main { background: #2e7d32; color: #fff; border: none; border-radius: 8px; padding: 9px 20px; font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s; }
+    .btn-print-main:disabled { opacity: .35; cursor: not-allowed; }
+    .btn-del-sm { background: #e53935; color: #fff; border: none; border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 700; cursor: pointer; display: none; }
+    .btn-clr-sm { background: none; border: none; color: #888; font-size: 13px; font-weight: 600; cursor: pointer; padding: 6px 4px; display: none; }
     .filter-bar { background: #fff; border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.07); display: flex; flex-direction: column; gap: 10px; }
     .filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .filter-label { font-size: 12px; font-weight: 600; color: #555; white-space: nowrap; min-width: 54px; }
@@ -59,10 +63,6 @@
     <button class="btn btn-dark" onclick="load()">Actualizar lista</button>
     <button class="btn" id="btnTrack" style="background:#1565c0;color:#fff" onclick="runTracking()">🔄 Actualizar estados</button>
     <span id="lastTracked" style="font-size:12px;color:#888;align-self:center"></span>
-    <button class="btn btn-sel" id="btnSelectAll" onclick="toggleSelectAll()">Seleccionar todo</button>
-    <button class="btn btn-print" id="btnPrintSel" onclick="printSelected()">🖨️ Imprimir seleccionados (<span id="printCount">0</span>)</button>
-    <button class="btn btn-del" id="btnDeleteSel" onclick="deleteSelected()">🗑️ Eliminar seleccionados (<span id="selCount">0</span>)</button>
-    <button class="btn btn-clr" id="btnClear" onclick="clearSelection()">Cancelar</button>
   </div>
 
   <div class="filter-bar">
@@ -92,6 +92,16 @@
     <div class="stat"><div class="num" id="s-ausente" style="color:#c62828">—</div><div class="label">Ausentes</div></div>
     <div class="stat"><div class="num" id="s-rechazado" style="color:#880e4f">—</div><div class="label">Rechazados</div></div>
     <div class="stat"><div class="num" id="s-entregado" style="color:#2e7d32">—</div><div class="label">Entregados</div></div>
+  </div>
+  <div class="act-bar">
+    <label>
+      <input type="checkbox" id="cbAll" onchange="onCbAllChange()">
+      Seleccionar todo
+    </label>
+    <span class="sel-count" id="selInfo"></span>
+    <button class="btn-print-main" id="btnPrint" onclick="printSelected()" disabled>🖨️ Imprimir (<span id="printCount">0</span>)</button>
+    <button class="btn-del-sm" id="btnDel" onclick="deleteSelected()">🗑️ Eliminar (<span id="selCount">0</span>)</button>
+    <button class="btn-clr-sm" id="btnClr" onclick="clearSelection()">✕ Cancelar</button>
   </div>
   <div id="list"></div>
 
@@ -193,17 +203,32 @@
     }
 
     function onCheck() {
+      const all = document.querySelectorAll('.cb');
       const checked = document.querySelectorAll('.cb:checked');
       const n = checked.length;
+      const total = all.length;
+
       document.getElementById('selCount').textContent = n;
       document.getElementById('printCount').textContent = n;
-      document.getElementById('btnPrintSel').style.display = n ? 'block' : 'none';
-      document.getElementById('btnDeleteSel').style.display = n ? 'block' : 'none';
-      document.getElementById('btnClear').style.display = n ? 'block' : 'none';
+      document.getElementById('selInfo').textContent = n ? `${n} seleccionado${n > 1 ? 's' : ''}` : '';
+      document.getElementById('btnPrint').disabled = n === 0;
+      document.getElementById('btnDel').style.display = n ? 'block' : 'none';
+      document.getElementById('btnClr').style.display = n ? 'block' : 'none';
+
+      const cbAll = document.getElementById('cbAll');
+      cbAll.indeterminate = n > 0 && n < total;
+      cbAll.checked = total > 0 && n === total;
+
       document.querySelectorAll('.card').forEach(c => {
         const cb = c.querySelector('.cb');
         c.classList.toggle('selected', cb?.checked);
       });
+    }
+
+    function onCbAllChange() {
+      const checked = document.getElementById('cbAll').checked;
+      document.querySelectorAll('.cb').forEach(c => { c.checked = checked; });
+      onCheck();
     }
 
     function toggleSelectAll() {
@@ -215,17 +240,21 @@
 
     function clearSelection() {
       document.querySelectorAll('.cb').forEach(c => c.checked = false);
+      const cbAll = document.getElementById('cbAll');
+      cbAll.checked = false; cbAll.indeterminate = false;
       document.getElementById('selCount').textContent = '0';
       document.getElementById('printCount').textContent = '0';
-      document.getElementById('btnPrintSel').style.display = 'none';
-      document.getElementById('btnDeleteSel').style.display = 'none';
-      document.getElementById('btnClear').style.display = 'none';
+      document.getElementById('selInfo').textContent = '';
+      document.getElementById('btnPrint').disabled = true;
+      document.getElementById('btnDel').style.display = 'none';
+      document.getElementById('btnClr').style.display = 'none';
       document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
     }
 
     function printSelected() {
       const exps = [...document.querySelectorAll('.cb:checked')].map(c => c.dataset.exp);
       if (!exps.length) return;
+      clearSelection();
       window.open('/api/labels-bulk?exps=' + exps.map(encodeURIComponent).join(','), '_blank');
     }
 
