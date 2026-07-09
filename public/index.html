@@ -13,7 +13,9 @@
     .stat { background: #fff; border-radius: 12px; padding: 16px 20px; flex: 1; min-width: 120px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
     .stat .num { font-size: 28px; font-weight: 700; }
     .stat .label { font-size: 12px; color: #888; margin-top: 2px; }
-    .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.07); display: flex; align-items: center; gap: 12px; }
+    .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.07); display: flex; align-items: center; gap: 12px; transition: background .15s, box-shadow .15s; cursor: pointer; user-select: none; }
+    .card:active { background: #f5f5f5; }
+    .card.selected { background: #e3f2fd; box-shadow: 0 0 0 2px #1565c0; }
     .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
     .badge.created   { background: #e3f2fd; color: #1565c0; }
     .badge.camino    { background: #fff8e1; color: #e65100; }
@@ -25,15 +27,65 @@
     .info .detail { font-size: 12px; color: #888; margin-top: 2px; }
     .track-link { font-size: 12px; color: #1565c0; text-decoration: none; }
     .track-link:hover { text-decoration: underline; }
-    .refresh { background: #000; color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 20px; }
+    .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .btn { border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn-dark { background: #000; color: #fff; }
+    .btn-sel  { background: #1565c0; color: #fff; }
+    .btn-del  { background: #e53935; color: #fff; display: none; }
+    .btn-print{ background: #2e7d32; color: #fff; display: none; }
+    .btn-clr  { background: #eee; color: #333; display: none; }
     .empty { text-align: center; color: #aaa; padding: 40px; }
-    .section-title { font-size: 13px; font-weight: 700; color: #444; text-transform: uppercase; letter-spacing: .5px; margin: 16px 0 8px; }
+    .sel-circle { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #ccc; background: #fff; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: all .15s; }
+    .card.selected .sel-circle { background: #1565c0; border-color: #1565c0; color: #fff; }
+    .cb { display: none; }
+    .filter-bar { background: #fff; border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.07); display: flex; flex-direction: column; gap: 10px; }
+    .filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .filter-label { font-size: 12px; font-weight: 600; color: #555; white-space: nowrap; min-width: 54px; }
+    .pill { border: 2px solid #e0e0e0; background: #fff; border-radius: 20px; padding: 5px 14px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; color: #555; }
+    .pill:hover { border-color: #bbb; }
+    .pill.pill-active { background: #000; color: #fff; border-color: #000; }
+    .pill.pill-created.pill-active  { background: #1565c0; border-color: #1565c0; }
+    .pill.pill-camino.pill-active   { background: #e65100; border-color: #e65100; }
+    .pill.pill-ausente.pill-active  { background: #c62828; border-color: #c62828; }
+    .pill.pill-rechazado.pill-active{ background: #880e4f; border-color: #880e4f; }
+    .pill.pill-entregado.pill-active{ background: #2e7d32; border-color: #2e7d32; }
   </style>
 </head>
 <body>
   <h1>Fady Envíos 📦</h1>
   <p class="sub">Envíos Correos Express</p>
-  <button class="refresh" onclick="load()">Actualizar</button>
+
+  <div class="toolbar">
+    <button class="btn btn-dark" onclick="load()">Actualizar lista</button>
+    <button class="btn" id="btnTrack" style="background:#1565c0;color:#fff" onclick="runTracking()">🔄 Actualizar estados</button>
+    <span id="lastTracked" style="font-size:12px;color:#888;align-self:center"></span>
+    <button class="btn btn-sel" id="btnSelectAll" onclick="toggleSelectAll()">Seleccionar todo</button>
+    <button class="btn btn-print" id="btnPrintSel" onclick="printSelected()">🖨️ Imprimir seleccionados (<span id="printCount">0</span>)</button>
+    <button class="btn btn-del" id="btnDeleteSel" onclick="deleteSelected()">🗑️ Eliminar seleccionados (<span id="selCount">0</span>)</button>
+    <button class="btn btn-clr" id="btnClear" onclick="clearSelection()">Cancelar</button>
+  </div>
+
+  <div class="filter-bar">
+    <div class="filter-row">
+      <span class="filter-label">Estado:</span>
+      <button class="pill pill-active" data-filter="all" onclick="setStatusFilter('all')">Todos</button>
+      <button class="pill pill-created" data-filter="created" onclick="setStatusFilter('created')">🖨️ Por imprimir</button>
+      <button class="pill pill-camino" data-filter="camino" onclick="setStatusFilter('camino')">🚚 En camino</button>
+      <button class="pill pill-ausente" data-filter="ausente" onclick="setStatusFilter('ausente')">Ausente</button>
+      <button class="pill pill-rechazado" data-filter="rechazado" onclick="setStatusFilter('rechazado')">Rechazado</button>
+      <button class="pill pill-entregado" data-filter="entregado" onclick="setStatusFilter('entregado')">Entregado</button>
+    </div>
+    <div class="filter-row">
+      <span class="filter-label">Período:</span>
+      <button class="pill pill-active" data-days="all" onclick="setDaysFilter('all')">Todos</button>
+      <button class="pill" data-days="0" onclick="setDaysFilter('0')">Hoy</button>
+      <button class="pill" data-days="1" onclick="setDaysFilter('1')">Ayer</button>
+      <button class="pill" data-days="3" onclick="setDaysFilter('3')">3 días</button>
+      <button class="pill" data-days="4" onclick="setDaysFilter('4')">4 días</button>
+      <button class="pill" data-days="7" onclick="setDaysFilter('7')">7 días</button>
+    </div>
+  </div>
+
   <div class="stats">
     <div class="stat"><div class="num" id="s-total">—</div><div class="label">Total</div></div>
     <div class="stat"><div class="num" id="s-camino">—</div><div class="label">En camino</div></div>
@@ -46,35 +98,215 @@
   <script>
     const STATUS_LABEL = { created: 'Creado', camino: 'En camino', ausente: 'Ausente', rechazado: 'Rechazado', entregado: 'Entregado' };
     const ORDER = ['ausente','rechazado','camino','created','entregado'];
+    let allShipments = [];
+    let activeStatus = 'all';
+    let activeDays = 'all';
+
+    function setStatusFilter(f) {
+      activeStatus = f;
+      document.querySelectorAll('[data-filter]').forEach(b => b.classList.toggle('pill-active', b.dataset.filter === f));
+      clearSelection();
+      applyFilters();
+    }
+
+    function setDaysFilter(d) {
+      activeDays = d;
+      document.querySelectorAll('[data-days]').forEach(b => b.classList.toggle('pill-active', b.dataset.days === d));
+      clearSelection();
+      applyFilters();
+    }
+
+    function applyFilters() {
+      let ships = allShipments;
+
+      if (activeStatus !== 'all') {
+        if (activeStatus === 'created') {
+          ships = ships.filter(s => !s.status || s.status === 'created');
+        } else {
+          ships = ships.filter(s => s.status === activeStatus);
+        }
+      }
+
+      if (activeDays !== 'all') {
+        const today = new Date(); today.setHours(0,0,0,0);
+        const todayMs = today.getTime();
+        const n = parseInt(activeDays);
+        if (n === 0) {
+          ships = ships.filter(s => (s.ts || 0) >= todayMs);
+        } else if (n === 1) {
+          ships = ships.filter(s => (s.ts || 0) >= todayMs - 86400000 && (s.ts || 0) < todayMs);
+        } else {
+          ships = ships.filter(s => (s.ts || 0) >= todayMs - (n - 1) * 86400000);
+        }
+      }
+
+      renderList(ships);
+    }
 
     async function load() {
+      clearSelection();
       const r = await fetch('/api/shipments');
       const d = await r.json();
-      const ships = d.shipments || [];
+      allShipments = d.shipments || [];
 
-      document.getElementById('s-total').textContent     = ships.length;
-      document.getElementById('s-camino').textContent    = ships.filter(s => s.status === 'camino').length;
-      document.getElementById('s-ausente').textContent   = ships.filter(s => s.status === 'ausente').length;
-      document.getElementById('s-rechazado').textContent = ships.filter(s => s.status === 'rechazado').length;
-      document.getElementById('s-entregado').textContent = ships.filter(s => s.status === 'entregado').length;
+      document.getElementById('s-total').textContent     = allShipments.length;
+      document.getElementById('s-camino').textContent    = allShipments.filter(s => s.status === 'camino').length;
+      document.getElementById('s-ausente').textContent   = allShipments.filter(s => s.status === 'ausente').length;
+      document.getElementById('s-rechazado').textContent = allShipments.filter(s => s.status === 'rechazado').length;
+      document.getElementById('s-entregado').textContent = allShipments.filter(s => s.status === 'entregado').length;
 
-      ships.sort((a, b) => (ORDER.indexOf(a.status) - ORDER.indexOf(b.status)) || (b.ts - a.ts));
+      applyFilters();
+    }
 
+    function renderList(ships) {
+      ships = [...ships].sort((a, b) => (ORDER.indexOf(a.status) - ORDER.indexOf(b.status)) || (b.ts - a.ts));
       const list = document.getElementById('list');
-      if (!ships.length) { list.innerHTML = '<div class="empty">No hay envíos registrados</div>'; return; }
+      if (!ships.length) { list.innerHTML = '<div class="empty">No hay envíos para los filtros seleccionados</div>'; return; }
       list.innerHTML = ships.map(s => `
-        <div class="card">
+        <div class="card" id="card-${s.expedicion}" onclick="toggleCard(this, '${s.expedicion}', event)">
+          <input type="checkbox" class="cb" data-exp="${s.expedicion}">
+          <div class="sel-circle">✓</div>
           <div class="info">
             <div class="name">${s.name || s.phone}</div>
             <div class="detail">${s.city || ''} ${s.zip || ''} · ${s.phone || ''} · €${s.price || 0}</div>
+            ${s.obs ? `<div class="detail" style="margin-top:2px;color:#e65100">📝 ${s.obs}</div>` : ''}
             <div class="detail" style="margin-top:4px">
               <span class="track-link" onclick="navigator.clipboard.writeText('${s.expedicion}');this.textContent='✅ Copiado!';setTimeout(()=>this.textContent='📦 ${s.expedicion}',1500)" style="cursor:pointer">📦 ${s.expedicion}</span>
+              · <a href="/api/label?exp=${s.expedicion}" target="_blank" class="track-link">🖨️ Etiqueta</a>
               ${s.lastEvent ? ' · ' + s.lastEvent : ''}
             </div>
           </div>
-          <span class="badge ${s.status || 'created'}">${STATUS_LABEL[s.status] || s.status}</span>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+            <span class="badge ${s.status || 'created'}">${STATUS_LABEL[s.status] || s.status}</span>
+            ${(!s.status || s.status === 'created') ? `<button onclick="cancelShipment('${s.expedicion}',this)" style="border:none;background:#ffebee;color:#c62828;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer">✕ Anular</button>` : ''}
+            ${(s.status === 'ausente' || s.status === 'rechazado') ? `<button onclick="markDelivered('${s.expedicion}',this)" style="border:none;background:#e8f5e9;color:#2e7d32;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer">✓ Entregado</button>` : ''}
+          </div>
         </div>
       `).join('');
+    }
+
+    function toggleCard(card, exp, e) {
+      if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || e.target.closest('button') || e.target.closest('a')) return;
+      const cb = card.querySelector('.cb');
+      cb.checked = !cb.checked;
+      onCheck();
+    }
+
+    function onCheck() {
+      const checked = document.querySelectorAll('.cb:checked');
+      const n = checked.length;
+      document.getElementById('selCount').textContent = n;
+      document.getElementById('printCount').textContent = n;
+      document.getElementById('btnPrintSel').style.display = n ? 'block' : 'none';
+      document.getElementById('btnDeleteSel').style.display = n ? 'block' : 'none';
+      document.getElementById('btnClear').style.display = n ? 'block' : 'none';
+      document.querySelectorAll('.card').forEach(c => {
+        const cb = c.querySelector('.cb');
+        c.classList.toggle('selected', cb?.checked);
+      });
+    }
+
+    function toggleSelectAll() {
+      const cbs = document.querySelectorAll('.cb');
+      const allChecked = [...cbs].every(c => c.checked);
+      cbs.forEach(c => { c.checked = !allChecked; });
+      onCheck();
+    }
+
+    function clearSelection() {
+      document.querySelectorAll('.cb').forEach(c => c.checked = false);
+      document.getElementById('selCount').textContent = '0';
+      document.getElementById('printCount').textContent = '0';
+      document.getElementById('btnPrintSel').style.display = 'none';
+      document.getElementById('btnDeleteSel').style.display = 'none';
+      document.getElementById('btnClear').style.display = 'none';
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+    }
+
+    function printSelected() {
+      const exps = [...document.querySelectorAll('.cb:checked')].map(c => c.dataset.exp);
+      if (!exps.length) return;
+      window.open('/api/labels-bulk?exps=' + exps.map(encodeURIComponent).join(','), '_blank');
+    }
+
+    async function deleteSelected() {
+      const exps = [...document.querySelectorAll('.cb:checked')].map(c => c.dataset.exp);
+      if (!exps.length) return;
+      if (!confirm('¿Eliminar ' + exps.length + ' envío(s)?')) return;
+
+      await Promise.all(exps.map(exp =>
+        fetch('/api/delete-shipment?exp=' + exp, { method: 'DELETE' })
+      ));
+
+      exps.forEach(exp => {
+        document.getElementById('card-' + exp)?.remove();
+        allShipments = allShipments.filter(s => s.expedicion !== exp);
+      });
+      clearSelection();
+
+      document.getElementById('s-total').textContent = allShipments.length;
+    }
+
+    async function runTracking() {
+      const btn = document.getElementById('btnTrack');
+      btn.disabled = true; btn.textContent = '⏳ Consultando…';
+      try {
+        const r = await fetch('/api/track?token=fady2024track');
+        const d = await r.json();
+        const changed = d.changed?.length || 0;
+        const checked = d.checked || 0;
+        btn.textContent = `✅ ${checked} revisados, ${changed} cambios`;
+        document.getElementById('lastTracked').textContent = 'Última consulta: ' + new Date().toLocaleTimeString('es-ES');
+        if (changed > 0) load();
+      } catch {
+        btn.textContent = '❌ Error';
+      }
+      setTimeout(() => { btn.disabled = false; btn.textContent = '🔄 Actualizar estados'; }, 3000);
+    }
+
+    async function cancelShipment(exp, btn) {
+      if (!confirm('¿Anular este envío en Correos Express? Se eliminará de su sistema de pendientes.')) return;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const r = await fetch('/api/cancel-shipment', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ exp }),
+        });
+        const d = await r.json();
+        if (d.ok) {
+          document.getElementById('card-' + exp)?.remove();
+          allShipments = allShipments.filter(s => s.expedicion !== exp);
+          document.getElementById('s-total').textContent = allShipments.length;
+        } else {
+          btn.disabled = false; btn.textContent = '✕ Anular';
+          alert('Error: ' + (d.message || 'No se pudo anular'));
+        }
+      } catch { btn.disabled = false; btn.textContent = '✕ Anular'; }
+    }
+
+    async function markDelivered(exp, btn) {
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const r = await fetch('/api/update-status', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ exp, status: 'entregado' }),
+        });
+        const d = await r.json();
+        if (d.ok) {
+          const ship = allShipments.find(s => s.expedicion === exp);
+          if (ship) ship.status = 'entregado';
+          const card = document.getElementById('card-' + exp);
+          if (card) {
+            card.querySelector('.badge').className = 'badge entregado';
+            card.querySelector('.badge').textContent = 'Entregado';
+            btn.remove();
+          }
+          document.getElementById('s-entregado').textContent =
+            allShipments.filter(s => s.status === 'entregado').length;
+        } else {
+          btn.disabled = false; btn.textContent = '✓ Entregado';
+        }
+      } catch { btn.disabled = false; btn.textContent = '✓ Entregado'; }
     }
 
     load();
