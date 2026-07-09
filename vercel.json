@@ -1,3 +1,12 @@
 {
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/seguimiento", "destination": "/seguimiento.html" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/track", "schedule": "0 8 * * *" }
+  ],
+  "functions": {
+    "api/track.js": { "maxDuration": 60 }
+  }
 }

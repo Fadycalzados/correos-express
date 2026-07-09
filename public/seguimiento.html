@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seguimiento de pedido — Fady Calzados</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 40px 16px;
+    }
+    .logo { font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 6px; }
+    .logo span { color: #e53935; }
+    .tagline { font-size: 13px; color: #888; margin-bottom: 36px; }
+    .card {
+      background: #fff; border-radius: 20px; padding: 28px 24px;
+      width: 100%; max-width: 420px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.09);
+    }
+    h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .sub { font-size: 13px; color: #888; margin-bottom: 22px; }
+    label { display: block; font-size: 11px; font-weight: 700; color: #444; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+    input {
+      width: 100%; border: 2px solid #e0e0e0; border-radius: 12px;
+      padding: 14px 16px; font-size: 18px; letter-spacing: 2px;
+      outline: none; transition: border-color .15s; margin-bottom: 14px;
+    }
+    input:focus { border-color: #000; }
+    .btn {
+      width: 100%; background: #000; color: #fff; border: none;
+      border-radius: 12px; padding: 16px; font-size: 16px; font-weight: 700;
+      cursor: pointer; transition: opacity .15s;
+    }
+    .btn:disabled { background: #ccc; cursor: default; }
+    .btn:active { opacity: .85; }
+
+    /* results */
+    #results { margin-top: 24px; }
+    .empty { text-align: center; color: #aaa; padding: 20px 0; font-size: 14px; }
+    .ship-card {
+      background: #fff; border-radius: 14px; padding: 18px;
+      margin-bottom: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.07);
+      border-left: 4px solid #e0e0e0;
+    }
+    .ship-card.created   { border-left-color: #1565c0; }
+    .ship-card.camino    { border-left-color: #f57f17; }
+    .ship-card.ausente   { border-left-color: #c62828; }
+    .ship-card.rechazado { border-left-color: #880e4f; }
+    .ship-card.entregado { border-left-color: #2e7d32; }
+
+    .ship-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+    .ship-exp { font-size: 13px; font-weight: 700; color: #555; font-family: monospace; letter-spacing: .5px; }
+    .badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
+    .badge.created   { background: #e3f2fd; color: #1565c0; }
+    .badge.camino    { background: #fff8e1; color: #e65100; }
+    .badge.ausente   { background: #ffebee; color: #c62828; }
+    .badge.rechazado { background: #fce4ec; color: #880e4f; }
+    .badge.entregado { background: #e8f5e9; color: #2e7d32; }
+
+    .ship-addr { font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 6px; }
+    .ship-event { font-size: 12px; color: #888; margin-top: 4px; }
+    .ship-date  { font-size: 11px; color: #bbb; margin-top: 4px; }
+
+    .status-steps { display: flex; justify-content: space-between; margin-top: 14px; position: relative; }
+    .status-steps::before {
+      content: ''; position: absolute; top: 12px; left: 0; right: 0; height: 2px; background: #e0e0e0; z-index: 0;
+    }
+    .step { display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 1; flex: 1; }
+    .step-dot {
+      width: 24px; height: 24px; border-radius: 50%; background: #e0e0e0;
+      display: flex; align-items: center; justify-content: center; font-size: 11px;
+    }
+    .step-dot.done { background: #000; color: #fff; }
+    .step-dot.active { background: #f57f17; color: #fff; box-shadow: 0 0 0 3px rgba(245,127,23,.25); }
+    .step-dot.error { background: #c62828; color: #fff; }
+    .step-lbl { font-size: 9px; color: #aaa; font-weight: 600; text-align: center; text-transform: uppercase; }
+    .step-lbl.done   { color: #333; }
+    .step-lbl.active { color: #e65100; }
+    .step-lbl.error  { color: #c62828; }
+  </style>
+</head>
+<body>
+  <div class="logo">FADY <span>●</span></div>
+  <p class="tagline">Calzados · Seguimiento de pedido</p>
+
+  <div class="card">
+    <h2>Consulta tu envío</h2>
+    <p class="sub">Introduce el número de teléfono con el que realizaste el pedido</p>
+    <label>Número de teléfono</label>
+    <input id="phone" type="tel" placeholder="612 345 678" inputmode="numeric" maxlength="15">
+    <button class="btn" id="btn" onclick="buscar()">Ver estado del pedido</button>
+    <div id="results"></div>
+  </div>
+
+  <script>
+    const STATUS_LABEL = {
+      created:   'Preparando',
+      camino:    'En camino',
+      ausente:   'Ausente',
+      rechazado: 'Rechazado',
+      entregado: 'Entregado',
+    };
+
+    const STEPS = ['created', 'camino', 'entregado'];
+    const STEP_LABELS = ['Preparando', 'En camino', 'Entregado'];
+
+    document.getElementById('phone').addEventListener('keydown', e => {
+      if (e.key === 'Enter') buscar();
+    });
+
+    async function buscar() {
+      const raw = document.getElementById('phone').value.replace(/\D/g, '');
+      if (!raw || raw.length < 9) {
+        document.getElementById('phone').style.borderColor = '#e53935';
+        return;
+      }
+      document.getElementById('phone').style.borderColor = '#e0e0e0';
+      const btn = document.getElementById('btn');
+      btn.disabled = true; btn.textContent = 'Buscando…';
+
+      try {
+        const r = await fetch('/api/customer-status?phone=' + encodeURIComponent(raw));
+        const d = await r.json();
+        renderResults(d.shipments || []);
+      } catch {
+        document.getElementById('results').innerHTML = '<div class="empty">Error de conexión. Inténtalo de nuevo.</div>';
+      } finally {
+        btn.disabled = false; btn.textContent = 'Ver estado del pedido';
+      }
+    }
+
+    function renderResults(shipments) {
+      const el = document.getElementById('results');
+      if (!shipments.length) {
+        el.innerHTML = '<div class="empty">No encontramos ningún pedido con ese número.<br>Comprueba que es el mismo número que diste al realizar el pedido.</div>';
+        return;
+      }
+      el.innerHTML = shipments.map(s => {
+        const status    = s.status || 'created';
+        const statusLbl = STATUS_LABEL[status] || status;
+        const date      = s.ts ? new Date(s.ts).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+
+        // progress bar logic
+        let step0 = 'done', step1 = '', step2 = '';
+        if (status === 'camino')    { step1 = 'active'; }
+        if (status === 'ausente' || status === 'rechazado') { step1 = 'error'; }
+        if (status === 'entregado') { step1 = 'done'; step2 = 'done'; }
+
+        return `
+        <div class="ship-card ${status}">
+          <div class="ship-top">
+            <div class="ship-exp">📦 ${s.expedicion || '—'}</div>
+            <span class="badge ${status}">${statusLbl}</span>
+          </div>
+          <div class="ship-addr">
+            ${s.address ? s.address + '<br>' : ''}${s.zip ? s.zip + ' ' : ''}${s.city || ''}
+          </div>
+          ${s.lastEvent ? `<div class="ship-event">ℹ️ ${s.lastEvent}</div>` : ''}
+          ${date ? `<div class="ship-date">Pedido el ${date}</div>` : ''}
+
+          <div class="status-steps">
+            <div class="step">
+              <div class="step-dot ${step0}">✓</div>
+              <div class="step-lbl ${step0}">Preparando</div>
+            </div>
+            <div class="step">
+              <div class="step-dot ${step1}">${step1 === 'error' ? '!' : step1 === 'done' ? '✓' : '→'}</div>
+              <div class="step-lbl ${step1}">${status === 'ausente' ? 'Ausente' : status === 'rechazado' ? 'Rechazado' : 'En camino'}</div>
+            </div>
+            <div class="step">
+              <div class="step-dot ${step2}">${step2 === 'done' ? '✓' : '●'}</div>
+              <div class="step-lbl ${step2}">Entregado</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  </script>
+</body>
+</html>
